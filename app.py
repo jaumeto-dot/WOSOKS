@@ -474,15 +474,13 @@ def record_key(record: dict[str, str]) -> str:
 def import_records(records: list[dict[str, str]], outlet_name: str) -> int:
     with connect() as conn:
         outlet_id = conn.execute("SELECT id FROM outlets WHERE name = ?", (outlet_name,)).fetchone()["id"]
-        conn.execute(
-            "UPDATE wine_outlets SET active = FALSE, updated_at = ? WHERE outlet_id = ?",
-            (now_iso(), outlet_id),
-        )
         count = 0
+        imported_keys: list[str] = []
         for record in records:
             key = record_key(record)
             if not key:
                 continue
+            imported_keys.append(key)
             conn.execute(
                 """
                 INSERT INTO wines(name, producer, grapes, vintage, country, region, appellation, subregion, format, type, category, search_key)
@@ -505,6 +503,19 @@ def import_records(records: list[dict[str, str]], outlet_name: str) -> int:
                 (wine_id, outlet_id, record["location"], record["price"], record["updated_at"]),
             )
             count += 1
+        if imported_keys:
+            placeholders = ",".join(["?"] * len(imported_keys))
+            conn.execute(
+                f"""
+                UPDATE wine_outlets
+                SET active = FALSE, updated_at = ?
+                WHERE outlet_id = ?
+                  AND wine_id IN (
+                    SELECT id FROM wines WHERE search_key NOT IN ({placeholders})
+                  )
+                """,
+                (now_iso(), outlet_id, *imported_keys),
+            )
         return count
 
 
