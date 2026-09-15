@@ -164,6 +164,7 @@ def normalize_type(value: str, category: str) -> str:
         "espumosos": "Espumosos",
         "generoso": "Generosos",
         "generosos": "Generosos",
+        "coravin": "Coravin",
         "porcopa": "Por copa",
         "rosado": "Rosados",
         "rosados": "Rosados",
