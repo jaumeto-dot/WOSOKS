@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WOS · Wine Operations</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <header class="topbar">
@@ -59,7 +59,7 @@
         <div class="panel-head">
           <div>
             <h2>Usuarios</h2>
-            <p>Admin crea usuarios, editor importa Excel, viewer solo consulta.</p>
+            <p>Admin crea usuarios, editor importa Excel, viewer solo consulta. Las contraseñas estan protegidas: desde aqui solo se resetean.</p>
           </div>
           <button id="refreshUsers" type="button">Actualizar</button>
         </div>
@@ -73,7 +73,7 @@
           </select>
           <button type="submit">Crear</button>
         </form>
-        <div class="users-table" id="usersTable"></div>
+        <div class="users-table" id="usersTable" aria-live="polite"></div>
       </section>
 
       <p class="count" id="resultCount"></p>
@@ -86,6 +86,6 @@
       <div id="dialogContent"></div>
     </dialog>
 
-    <script src="./app.js?v=9"></script>
+    <script src="./app.js?v=10"></script>
   </body>
 </html>
