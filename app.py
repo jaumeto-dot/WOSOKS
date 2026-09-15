@@ -437,7 +437,10 @@ def init_db() -> None:
                 """
             )
         for outlet in OUTLETS:
-            conn.execute("INSERT OR IGNORE INTO outlets(name) VALUES (?)", (outlet,))
+            if DATABASE_URL:
+                conn.execute("INSERT INTO outlets(name) VALUES (?) ON CONFLICT (name) DO NOTHING", (outlet,))
+            else:
+                conn.execute("INSERT OR IGNORE INTO outlets(name) VALUES (?)", (outlet,))
         existing_admin = conn.execute("SELECT id FROM users WHERE username = ?", ("admin",)).fetchone()
         if not existing_admin:
             conn.execute(

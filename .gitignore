@@ -1,0 +1,10 @@
+Hoja Control *.xlsx
+*.xlsx
+.env
+.env.*
+*.sqlite3
+data/
+__pycache__/
+*.zip
+*.tar.gz
+upload/
