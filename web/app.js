@@ -332,14 +332,22 @@ async function loadMe() {
 async function loadData() {
   let data = { wines: [], outlets: [] };
   try {
-    const response = await fetch("/api/wines");
+    const response = await fetch(`/api/wines?t=${Date.now()}`, { cache: "no-store" });
     if (response.status === 401) {
       location.href = "/login";
       return;
     }
-    if (response.ok) data = await response.json();
+    data = await readResponse(response);
+    if (!response.ok) {
+      els.count.textContent = data.error || "No se pudieron cargar los vinos";
+      els.empty.style.display = "block";
+      els.empty.textContent = "Error cargando vinos. Revisa /api/diagnostics con usuario admin.";
+      return;
+    }
   } catch (error) {
-    data = { wines: [], outlets: [] };
+    els.count.textContent = "No se pudo conectar con el servidor";
+    els.empty.style.display = "block";
+    return;
   }
   state.wines = (data.wines || []).map(normalizeWine);
   if (data.outlets?.length) state.outlets = ["TODOS", ...data.outlets];
@@ -516,6 +524,7 @@ els.fileInput.addEventListener("change", async (event) => {
     const response = await fetch(`/api/import?outlet=${encodeURIComponent(outlet)}`, {
       method: "POST",
       body: await file.arrayBuffer(),
+      cache: "no-store",
       headers: {
         "X-Filename": file.name,
       },
@@ -530,7 +539,7 @@ els.fileInput.addEventListener("change", async (event) => {
       return;
     }
     await loadData();
-    alert(`${result.imported} vinos importados en ${result.outlet}`);
+    alert(`${result.imported} vinos importados en ${result.outlet}. Activos: ${result.summary?.active_locations ?? "?"}`);
   } catch (error) {
     alert("No se pudo conectar con el servidor de importación.");
   } finally {
