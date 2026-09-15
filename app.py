@@ -658,10 +658,33 @@ def json_response(
     status: str = "200 OK",
     headers: list[tuple[str, str]] | None = None,
 ) -> tuple[str, list[tuple[str, str]], bytes]:
-    response_headers = [("Content-Type", "application/json; charset=utf-8")]
+    response_headers = [
+        ("Content-Type", "application/json; charset=utf-8"),
+        ("Cache-Control", "no-store, max-age=0"),
+    ]
     if headers:
         response_headers.extend(headers)
     return status, response_headers, json.dumps(data, ensure_ascii=False).encode()
+
+
+def database_summary() -> dict[str, Any]:
+    with connect() as conn:
+        active_rows = conn.execute("SELECT COUNT(*) AS n FROM wine_outlets WHERE active = TRUE").fetchone()["n"]
+        wine_rows = conn.execute("SELECT COUNT(*) AS n FROM wines").fetchone()["n"]
+        imports = conn.execute(
+            """
+            SELECT outlet, filename, imported_count, created_at
+            FROM import_batches
+            ORDER BY created_at DESC
+            LIMIT 5
+            """
+        ).fetchall()
+    return {
+        "wines": wine_rows,
+        "active_locations": active_rows,
+        "grouped_wines": len(grouped_wines()),
+        "recent_imports": [dict(row) for row in imports],
+    }
 
 
 def parse_json_body(environ: dict[str, Any]) -> dict[str, Any]:
@@ -874,6 +897,12 @@ def app(environ: dict[str, Any], start_response):
             status, headers, body = response
         else:
             status, headers, body = json_response({"wines": grouped_wines(), "outlets": OUTLETS})
+    elif request_path == "/api/diagnostics":
+        user, response = require_admin(environ)
+        if response:
+            status, headers, body = response
+        else:
+            status, headers, body = json_response(database_summary())
     elif request_path == "/api/users" and method == "GET":
         user, response = require_admin(environ)
         if response:
@@ -939,6 +968,13 @@ def app(environ: dict[str, Any], start_response):
                 target = outlet_dir / f"{timestamp}-{filename}"
                 target.write_bytes(payload)
                 records = parse_workbook(target, outlet)
+                if not records:
+                    status, headers, body = json_response(
+                        {"error": "El Excel se ha leido, pero no se ha encontrado ningun vino importable. Revisa columnas y pestañas."},
+                        "400 Bad Request",
+                    )
+                    start_response(status, headers)
+                    return [body]
                 count = import_records(records, outlet)
                 with connect() as conn:
                     conn.execute(
@@ -948,7 +984,7 @@ def app(environ: dict[str, Any], start_response):
                         """,
                         (outlet, filename, count, user["id"], now_iso()),
                     )
-                status, headers, body = json_response({"imported": count, "outlet": outlet})
+                status, headers, body = json_response({"imported": count, "outlet": outlet, "summary": database_summary()})
     else:
         user, response = require_user(environ)
         if response:
