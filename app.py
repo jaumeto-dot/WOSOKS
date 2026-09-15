@@ -529,7 +529,7 @@ def all_wines() -> list[dict[str, Any]]:
             JOIN wine_outlets wo ON wo.wine_id = w.id
             JOIN outlets o ON o.id = wo.outlet_id
             WHERE wo.active = TRUE
-            ORDER BY w.name COLLATE NOCASE
+            ORDER BY lower(w.name)
             """
         ).fetchall()
     return [dict(r) for r in rows]
