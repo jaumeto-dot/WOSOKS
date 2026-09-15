@@ -42,6 +42,7 @@ ROLES = {"viewer", "editor", "admin"}
 SESSION_DAYS = 7
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 STATIC_ROOT = ROOT / "web"
+DB_READY = False
 
 
 def now_iso() -> str:
@@ -520,6 +521,14 @@ def seed_from_excel() -> None:
         import_records(records, "SHIMA")
 
 
+def ensure_db() -> None:
+    global DB_READY
+    if DB_READY:
+        return
+    init_db()
+    DB_READY = True
+
+
 def all_wines() -> list[dict[str, Any]]:
     with connect() as conn:
         rows = conn.execute(
@@ -664,7 +673,7 @@ def json_response(
     ]
     if headers:
         response_headers.extend(headers)
-    return status, response_headers, json.dumps(data, ensure_ascii=False).encode()
+    return status, response_headers, json.dumps(data, ensure_ascii=False, default=str).encode()
 
 
 def database_summary() -> dict[str, Any]:
@@ -857,7 +866,7 @@ def static_file_for(request_path: str) -> Path | None:
 
 
 def app(environ: dict[str, Any], start_response):
-    seed_from_excel()
+    ensure_db()
     request_path = urlparse(environ.get("PATH_INFO", "/")).path
     method = environ.get("REQUEST_METHOD", "GET")
 
