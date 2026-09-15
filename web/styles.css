@@ -222,6 +222,38 @@ select:focus {
   display: none;
 }
 
+.import-status {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.import-status[hidden] {
+  display: none;
+}
+
+.import-status div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.import-status strong {
+  color: var(--text);
+}
+
+.import-status progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--dark);
+}
+
 select {
   width: 100%;
   height: 44px;
