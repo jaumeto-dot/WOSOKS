@@ -1,4 +1,5 @@
 const state = {
+  currentUser: null,
   wines: [],
   outlets: ["TODOS", "SHIMA", "LLUM I SAL", "MEL", "CERCLE", "QUIOSC"],
   outlet: "SHIMA",
@@ -27,12 +28,21 @@ const els = {
   producer: document.querySelector("#producerFilter"),
   vintage: document.querySelector("#vintageFilter"),
   fileInput: document.querySelector("#fileInput"),
+  importLabel: document.querySelector("#importLabel"),
   dialog: document.querySelector("#wineDialog"),
   dialogContent: document.querySelector("#dialogContent"),
   closeDialog: document.querySelector("#closeDialog"),
   filtersToggle: document.querySelector("#filtersToggle"),
   filtersLabel: document.querySelector("#filtersLabel"),
   filtersChevron: document.querySelector("#filtersChevron"),
+  usersToggle: document.querySelector("#usersToggle"),
+  usersPanel: document.querySelector("#usersPanel"),
+  userForm: document.querySelector("#userForm"),
+  usersTable: document.querySelector("#usersTable"),
+  refreshUsers: document.querySelector("#refreshUsers"),
+  newUsername: document.querySelector("#newUsername"),
+  newPassword: document.querySelector("#newPassword"),
+  newRole: document.querySelector("#newRole"),
 };
 
 function norm(value) {
@@ -307,6 +317,18 @@ function renderAll() {
   renderResults();
 }
 
+async function loadMe() {
+  const response = await fetch("/api/me");
+  if (response.status === 401) {
+    location.href = "/login";
+    return;
+  }
+  state.currentUser = response.ok ? await response.json() : null;
+  const role = state.currentUser?.role || "viewer";
+  els.importLabel.hidden = !["admin", "editor"].includes(role);
+  els.usersToggle.hidden = role !== "admin";
+}
+
 async function loadData() {
   let data = { wines: [], outlets: [] };
   try {
@@ -322,6 +344,68 @@ async function loadData() {
   state.wines = (data.wines || []).map(normalizeWine);
   if (data.outlets?.length) state.outlets = ["TODOS", ...data.outlets];
   renderAll();
+}
+
+function roleLabel(role) {
+  const labels = {
+    admin: "Admin",
+    editor: "Editor",
+    viewer: "Viewer",
+  };
+  return labels[role] || role;
+}
+
+function renderUsers(users) {
+  els.usersTable.innerHTML = users.map((user) => `
+    <div class="user-row" data-id="${user.id}">
+      <div>
+        <strong>${escapeHtml(user.username)}</strong>
+        <span>${escapeHtml(roleLabel(user.role))} · ${user.active ? "Activo" : "Inactivo"}</span>
+      </div>
+      <select class="role-select" aria-label="Rol de ${escapeHtml(user.username)}">
+        <option value="viewer"${user.role === "viewer" ? " selected" : ""}>viewer</option>
+        <option value="editor"${user.role === "editor" ? " selected" : ""}>editor</option>
+        <option value="admin"${user.role === "admin" ? " selected" : ""}>admin</option>
+      </select>
+      <input class="reset-password" type="password" placeholder="Nueva contraseña" />
+      <button class="save-user" type="button">Guardar</button>
+      <button class="toggle-user" type="button">${user.active ? "Desactivar" : "Activar"}</button>
+    </div>
+  `).join("");
+}
+
+async function loadUsers() {
+  if (state.currentUser?.role !== "admin") return;
+  const response = await fetch("/api/users");
+  if (response.status === 401) {
+    location.href = "/login";
+    return;
+  }
+  const result = await response.json();
+  if (!response.ok) {
+    alert(result.error || "No se pudieron cargar usuarios");
+    return;
+  }
+  renderUsers(result.users || []);
+}
+
+async function patchUser(row, extra = {}) {
+  const id = row.dataset.id;
+  const password = row.querySelector(".reset-password").value;
+  const role = row.querySelector(".role-select").value;
+  const payload = { id, role, ...extra };
+  if (password) payload.password = password;
+  const response = await fetch("/api/users", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    alert(result.error || "No se pudo actualizar el usuario");
+    return;
+  }
+  renderUsers(result.users || []);
 }
 
 els.search.addEventListener("input", (event) => {
@@ -371,14 +455,48 @@ els.filtersToggle.addEventListener("click", () => {
   setFiltersOpen(els.filtersPanel.hidden);
 });
 
+els.usersToggle.addEventListener("click", async () => {
+  els.usersPanel.hidden = !els.usersPanel.hidden;
+  if (!els.usersPanel.hidden) await loadUsers();
+});
+
+els.refreshUsers.addEventListener("click", loadUsers);
+
+els.userForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const response = await fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: els.newUsername.value,
+      password: els.newPassword.value,
+      role: els.newRole.value,
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    alert(result.error || "No se pudo crear el usuario");
+    return;
+  }
+  els.userForm.reset();
+  els.newRole.value = "viewer";
+  renderUsers(result.users || []);
+});
+
+els.usersTable.addEventListener("click", async (event) => {
+  const row = event.target.closest(".user-row");
+  if (!row) return;
+  if (event.target.classList.contains("save-user")) {
+    await patchUser(row);
+  }
+  if (event.target.classList.contains("toggle-user")) {
+    await patchUser(row, { active: event.target.textContent === "Activar" });
+  }
+});
+
 els.fileInput.addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;
-  if (!["127.0.0.1", "localhost"].includes(location.hostname)) {
-    alert("Para importar Excel, abre WOS con el servidor: python3 app.py");
-    event.target.value = "";
-    return;
-  }
   const outlet = state.outlet === "TODOS" ? "SHIMA" : state.outlet;
   try {
     const response = await fetch(`/api/import?outlet=${encodeURIComponent(outlet)}`, {
@@ -412,4 +530,9 @@ try {
   setFiltersOpen(false);
 }
 
-loadData();
+async function init() {
+  await loadMe();
+  await loadData();
+}
+
+init();

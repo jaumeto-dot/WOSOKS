@@ -31,6 +31,13 @@ La versión pública estática no incluye datos de vinos embebidos. Los datos so
 - Ficha del vino con ubicaciones.
 - Importación de Excel por outlet protegida para administradores.
 - Histórico de importaciones con fecha, usuario, archivo, outlet y cantidad importada.
+- Gestión de usuarios y roles.
+
+## Roles
+
+- `admin`: consulta vinos, importa Excel y gestiona usuarios.
+- `editor`: consulta vinos e importa Excel.
+- `viewer`: solo consulta vinos.
 
 ## Importaciones
 

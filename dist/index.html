@@ -20,11 +20,14 @@
           <span>Wine Operations</span>
         </div>
       </div>
-      <label class="import-button">
-        <input id="fileInput" type="file" accept=".xlsx" />
-        <span>Importar Excel</span>
-      </label>
-      <a class="logout-link" href="/logout">Salir</a>
+      <div class="top-actions">
+        <button class="admin-button" id="usersToggle" type="button" hidden>Usuarios</button>
+        <label class="import-button" id="importLabel">
+          <input id="fileInput" type="file" accept=".xlsx" />
+          <span>Importar Excel</span>
+        </label>
+        <a class="logout-link" href="/logout">Salir</a>
+      </div>
     </header>
 
     <main class="app">
@@ -52,6 +55,27 @@
         <select id="vintageFilter" aria-label="Añada"><option value="">Añada</option></select>
       </section>
 
+      <section class="users-panel" id="usersPanel" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Usuarios</h2>
+            <p>Admin crea usuarios, editor importa Excel, viewer solo consulta.</p>
+          </div>
+          <button id="refreshUsers" type="button">Actualizar</button>
+        </div>
+        <form class="user-form" id="userForm">
+          <input id="newUsername" name="username" placeholder="Usuario" autocomplete="off" required />
+          <input id="newPassword" name="password" type="password" placeholder="Contraseña" required />
+          <select id="newRole" name="role" required>
+            <option value="viewer">viewer</option>
+            <option value="editor">editor</option>
+            <option value="admin">admin</option>
+          </select>
+          <button type="submit">Crear</button>
+        </form>
+        <div class="users-table" id="usersTable"></div>
+      </section>
+
       <p class="count" id="resultCount"></p>
       <section class="results" id="results"></section>
       <p class="empty" id="emptyState">No hay vinos con estos filtros.</p>
@@ -62,6 +86,6 @@
       <div id="dialogContent"></div>
     </dialog>
 
-    <script src="./app.js?v=8"></script>
+    <script src="./app.js?v=9"></script>
   </body>
 </html>

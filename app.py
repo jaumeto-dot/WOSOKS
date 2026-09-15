@@ -38,6 +38,7 @@ IMPORTS_DIR = Path(
 UPLOAD_XLSX = ROOT / "Hoja Control SHIMA.xlsx"
 SOURCE_XLSX = Path("/workspace/scratch/73925ec744f1/upload/Hoja Control SHIMA.xlsx")
 OUTLETS = ["SHIMA", "LLUM I SAL", "MEL", "CERCLE", "QUIOSC"]
+ROLES = {"viewer", "editor", "admin"}
 SESSION_DAYS = 7
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 STATIC_ROOT = ROOT / "web"
@@ -663,6 +664,17 @@ def json_response(
     return status, response_headers, json.dumps(data, ensure_ascii=False).encode()
 
 
+def parse_json_body(environ: dict[str, Any]) -> dict[str, Any]:
+    size = int(environ.get("CONTENT_LENGTH") or "0")
+    if size <= 0:
+        return {}
+    try:
+        data = json.loads(environ["wsgi.input"].read(size).decode("utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def html_response(
     html: str,
     status: str = "200 OK",
@@ -704,6 +716,98 @@ def require_admin(environ: dict[str, Any]) -> tuple[dict[str, Any] | None, tuple
     if user and user["role"] == "admin":
         return user, None
     return None, json_response({"error": "Permiso insuficiente"}, "403 Forbidden")
+
+
+def require_editor(environ: dict[str, Any]) -> tuple[dict[str, Any] | None, tuple[str, list[tuple[str, str]], bytes] | None]:
+    user, response = require_user(environ)
+    if response:
+        return None, response
+    if user and user["role"] in {"admin", "editor"}:
+        return user, None
+    return None, json_response({"error": "Permiso insuficiente"}, "403 Forbidden")
+
+
+def list_users() -> list[dict[str, Any]]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, username, role, active, created_at
+            FROM users
+            ORDER BY lower(username)
+            """
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def active_admin_count() -> int:
+    with connect() as conn:
+        return conn.execute("SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND active = TRUE").fetchone()["n"]
+
+
+def create_user(data: dict[str, Any]) -> tuple[str, list[tuple[str, str]], bytes]:
+    username = clean(data.get("username", ""))
+    password = str(data.get("password", ""))
+    role = clean(data.get("role", "viewer"))
+    if not re.fullmatch(r"[A-Za-z0-9._-]{3,40}", username):
+        return json_response({"error": "Usuario inválido"}, "400 Bad Request")
+    if role not in ROLES:
+        return json_response({"error": "Rol inválido"}, "400 Bad Request")
+    if len(password) < 8:
+        return json_response({"error": "Contraseña mínima: 8 caracteres"}, "400 Bad Request")
+    try:
+        with connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO users(username, password_hash, role, active, created_at)
+                VALUES (?, ?, ?, TRUE, ?)
+                """,
+                (username, hash_password(password), role, now_iso()),
+            )
+    except Exception:
+        return json_response({"error": "Ese usuario ya existe"}, "409 Conflict")
+    return json_response({"ok": True, "users": list_users()}, "201 Created")
+
+
+def update_user(data: dict[str, Any], actor: dict[str, Any]) -> tuple[str, list[tuple[str, str]], bytes]:
+    user_id = clean(data.get("id", ""))
+    role = clean(data.get("role", ""))
+    password = str(data.get("password", ""))
+    active = data.get("active", None)
+    if not user_id.isdigit():
+        return json_response({"error": "Usuario inválido"}, "400 Bad Request")
+    with connect() as conn:
+        target = conn.execute("SELECT id, username, role, active FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not target:
+        return json_response({"error": "Usuario no encontrado"}, "404 Not Found")
+
+    will_be_admin = role == "admin" if role else target["role"] == "admin"
+    will_be_active = bool(active) if isinstance(active, bool) else bool(target["active"])
+    if target["role"] == "admin" and (not will_be_admin or not will_be_active) and active_admin_count() <= 1:
+        return json_response({"error": "Debe quedar al menos un admin activo"}, "400 Bad Request")
+    if str(target["id"]) == str(actor["id"]) and isinstance(active, bool) and not active:
+        return json_response({"error": "No puedes desactivar tu propio usuario"}, "400 Bad Request")
+
+    updates: list[str] = []
+    params: list[Any] = []
+    if role:
+        if role not in ROLES:
+            return json_response({"error": "Rol inválido"}, "400 Bad Request")
+        updates.append("role = ?")
+        params.append(role)
+    if isinstance(active, bool):
+        updates.append("active = ?")
+        params.append(active)
+    if password:
+        if len(password) < 8:
+            return json_response({"error": "Contraseña mínima: 8 caracteres"}, "400 Bad Request")
+        updates.append("password_hash = ?")
+        params.append(hash_password(password))
+    if not updates:
+        return json_response({"ok": True, "users": list_users()})
+    params.append(user_id)
+    with connect() as conn:
+        conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", tuple(params))
+    return json_response({"ok": True, "users": list_users()})
 
 
 def static_response(path: Path) -> tuple[str, list[tuple[str, str]], bytes]:
@@ -770,6 +874,24 @@ def app(environ: dict[str, Any], start_response):
             status, headers, body = response
         else:
             status, headers, body = json_response({"wines": grouped_wines(), "outlets": OUTLETS})
+    elif request_path == "/api/users" and method == "GET":
+        user, response = require_admin(environ)
+        if response:
+            status, headers, body = response
+        else:
+            status, headers, body = json_response({"users": list_users(), "roles": sorted(ROLES)})
+    elif request_path == "/api/users" and method == "POST":
+        user, response = require_admin(environ)
+        if response:
+            status, headers, body = response
+        else:
+            status, headers, body = create_user(parse_json_body(environ))
+    elif request_path == "/api/users" and method == "PATCH":
+        user, response = require_admin(environ)
+        if response:
+            status, headers, body = response
+        else:
+            status, headers, body = update_user(parse_json_body(environ), user)
     elif request_path == "/api/imports":
         user, response = require_admin(environ)
         if response:
@@ -787,7 +909,7 @@ def app(environ: dict[str, Any], start_response):
                 ).fetchall()
             status, headers, body = json_response({"imports": [dict(row) for row in rows]})
     elif request_path == "/api/import" and method == "POST":
-        user, response = require_admin(environ)
+        user, response = require_editor(environ)
         if response:
             status, headers, body = response
         else:

@@ -21,6 +21,9 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._handle()
 
+    def do_PATCH(self):
+        self._handle()
+
     def _handle(self):
         parsed = urlsplit(self.path)
         body = self.rfile.read(int(self.headers.get("content-length", "0") or "0"))
