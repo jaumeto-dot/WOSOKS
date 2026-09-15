@@ -356,18 +356,22 @@ function roleLabel(role) {
 }
 
 function renderUsers(users) {
+  if (!users.length) {
+    els.usersTable.innerHTML = `<p class="user-empty">Todavia no hay usuarios creados.</p>`;
+    return;
+  }
   els.usersTable.innerHTML = users.map((user) => `
     <div class="user-row" data-id="${user.id}">
       <div>
         <strong>${escapeHtml(user.username)}</strong>
-        <span>${escapeHtml(roleLabel(user.role))} · ${user.active ? "Activo" : "Inactivo"}</span>
+        <span>${escapeHtml(roleLabel(user.role))} · ${user.active ? "Activo" : "Inactivo"} · Contraseña protegida</span>
       </div>
       <select class="role-select" aria-label="Rol de ${escapeHtml(user.username)}">
         <option value="viewer"${user.role === "viewer" ? " selected" : ""}>viewer</option>
         <option value="editor"${user.role === "editor" ? " selected" : ""}>editor</option>
         <option value="admin"${user.role === "admin" ? " selected" : ""}>admin</option>
       </select>
-      <input class="reset-password" type="password" placeholder="Nueva contraseña" />
+      <input class="reset-password" type="password" placeholder="Reset contraseña" autocomplete="new-password" />
       <button class="save-user" type="button">Guardar</button>
       <button class="toggle-user" type="button">${user.active ? "Desactivar" : "Activar"}</button>
     </div>
@@ -406,6 +410,16 @@ async function patchUser(row, extra = {}) {
     return;
   }
   renderUsers(result.users || []);
+}
+
+async function readResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return { error: text.slice(0, 220) };
+  }
 }
 
 els.search.addEventListener("input", (event) => {
@@ -510,7 +524,7 @@ els.fileInput.addEventListener("change", async (event) => {
       location.href = "/login";
       return;
     }
-    const result = await response.json();
+    const result = await readResponse(response);
     if (!response.ok) {
       alert(result.error || "No se pudo importar el Excel");
       return;
