@@ -1,0 +1,473 @@
+:root {
+  color-scheme: light;
+  --bg: #fbfbfa;
+  --panel: #ffffff;
+  --text: #050505;
+  --muted: #67717f;
+  --line: #dfdfdf;
+  --soft: #f5f5f4;
+  --dark: #030303;
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+}
+
+.topbar {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px 10px 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand strong {
+  display: block;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.brand span {
+  display: block;
+  margin-top: 5px;
+  color: #777;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--dark);
+  color: white;
+}
+
+.logo svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.import-button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-weight: 650;
+  background: white;
+  cursor: pointer;
+}
+
+.import-button input {
+  display: none;
+}
+
+.logout-link {
+  color: #67717f;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.app {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.search-card {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.search-card input {
+  width: 100%;
+  height: 56px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: white;
+  padding: 0 18px 0 50px;
+  font-size: 18px;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.search-card input:focus,
+select:focus {
+  border-color: #0b0b0b;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+
+.search-icon {
+  position: absolute;
+  left: 18px;
+  top: 17px;
+  width: 22px;
+  height: 22px;
+  fill: #6b7280;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 0 14px;
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: white;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.category-chips .chip {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.chip.active {
+  background: var(--dark);
+  color: white;
+  border-color: var(--dark);
+}
+
+.filters-title {
+  appearance: none;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 10px;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.filters-title:focus-visible {
+  border-color: #0b0b0b;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+
+.sliders {
+  font-size: 18px;
+  color: #3f454c;
+}
+
+.filters-chevron {
+  margin-left: auto;
+  color: #3f454c;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.filters[hidden] {
+  display: none;
+}
+
+select {
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 0 14px;
+  font-size: 14px;
+  outline: none;
+}
+
+.count {
+  margin: 0 0 8px;
+  color: #68717d;
+  font-size: 13px;
+}
+
+.results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wine-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 16px 16px;
+  min-height: 136px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.wine-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.wine-heading,
+.dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wine-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.glass-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  background: var(--dark);
+  color: white;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.inline-glass {
+  display: inline-block;
+  color: var(--text);
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.meta {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.card-locations {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.card-location {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.card-location span {
+  min-width: 0;
+  color: #454b53;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-block;
+  margin-top: 12px;
+  border: 1px solid #ececec;
+  color: #8a8f98;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.price {
+  font-weight: 800;
+}
+
+.empty {
+  display: none;
+  text-align: center;
+  color: var(--muted);
+  margin: 40px 0;
+}
+
+dialog {
+  width: min(620px, calc(100vw - 28px));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.close {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.dialog-title {
+  margin: 0 30px 8px 0;
+  font-size: 24px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px 14px;
+  margin: 18px 0;
+  font-size: 14px;
+}
+
+.detail-grid dt {
+  color: var(--muted);
+}
+
+.detail-grid dd {
+  margin: 0;
+  font-weight: 650;
+}
+
+.locations {
+  display: grid;
+  gap: 8px;
+}
+
+.location-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.location-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.location-price {
+  white-space: nowrap;
+}
+
+.location-glass {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--dark);
+  color: white;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+.location-place {
+  color: #454b53;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    padding: 10px 14px;
+  }
+
+  .brand span {
+    letter-spacing: 1.3px;
+  }
+
+  .import-button {
+    padding: 9px 10px;
+  }
+
+  .app {
+    padding-top: 22px;
+  }
+
+  .search-card input {
+    height: 54px;
+    font-size: 16px;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-title {
+    padding-bottom: 8px;
+  }
+
+  .results {
+    grid-template-columns: 1fr;
+  }
+
+  .card-location {
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+  }
+
+  .card-location span {
+    grid-column: 1 / -1;
+  }
+
+  .badge {
+    display: none;
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "wos-wine-operations-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist && cp -R web/. dist/"
+  }
+}
