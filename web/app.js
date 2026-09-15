@@ -29,6 +29,10 @@ const els = {
   vintage: document.querySelector("#vintageFilter"),
   fileInput: document.querySelector("#fileInput"),
   importLabel: document.querySelector("#importLabel"),
+  importStatus: document.querySelector("#importStatus"),
+  importStatusText: document.querySelector("#importStatusText"),
+  importPercent: document.querySelector("#importPercent"),
+  importProgress: document.querySelector("#importProgress"),
   dialog: document.querySelector("#wineDialog"),
   dialogContent: document.querySelector("#dialogContent"),
   closeDialog: document.querySelector("#closeDialog"),
@@ -95,6 +99,7 @@ function canonicalType(type, category) {
     espumosos: "Espumosos",
     generoso: "Generosos",
     generosos: "Generosos",
+    coravin: "Coravin",
     porcopa: "Por copa",
     rosado: "Rosados",
     rosados: "Rosados",
@@ -129,6 +134,16 @@ function normalizeWine(wine) {
 
 function isByTheGlass(wine) {
   return norm(wine.category) === "por copa" || norm(wine.format) === "copa";
+}
+
+function isCoravin(wine) {
+  return norm(wine.category) === "coravin" || norm(wine.type) === "coravin";
+}
+
+function serviceBadge(wine) {
+  if (isByTheGlass(wine)) return "POR COPA";
+  if (isCoravin(wine)) return "CORAVIN";
+  return "";
 }
 
 function visibleOutlet(wine) {
@@ -241,12 +256,12 @@ function cardHtml(wine) {
   const subtitle = [wine.producer, wine.vintage].filter(Boolean).join(" — ");
   const region = [wine.region, wine.grapes].filter(Boolean).join(" · ");
   const locations = wine.outlets.length > 1 ? wine.outlets : [location];
-  const glass = isByTheGlass(wine);
+  const badge = serviceBadge(wine);
   return `
     <article class="wine-card" data-id="${wine.id}">
       <div class="wine-heading">
         <h2 class="wine-title">${escapeHtml(wine.name)}</h2>
-        ${glass ? `<span class="glass-badge">POR COPA</span>` : ""}
+        ${badge ? `<span class="glass-badge">${escapeHtml(badge)}</span>` : ""}
       </div>
       <p class="meta">${escapeHtml(subtitle || "Sin productor")}</p>
       <p class="meta">${escapeHtml(region || wine.appellation || "")}</p>
@@ -254,7 +269,7 @@ function cardHtml(wine) {
         ${locations.map((item) => `
           <div class="card-location">
             <strong>${escapeHtml(item.outlet || "")}</strong>
-            <span>${glass ? `<strong class="inline-glass">POR COPA</strong> ` : ""}${escapeHtml(item.location || "Sin ubicación")}</span>
+            <span>${badge ? `<strong class="inline-glass">${escapeHtml(badge)}</strong> ` : ""}${escapeHtml(item.location || "Sin ubicación")}</span>
             <strong class="price">${escapeHtml(item.price || "")}</strong>
           </div>
         `).join("")}
@@ -265,7 +280,7 @@ function cardHtml(wine) {
 }
 
 function renderDialog(wine) {
-  const glass = isByTheGlass(wine);
+  const badge = serviceBadge(wine);
   const rows = [
     ["Productor", wine.producer],
     ["Añada", wine.vintage],
@@ -279,7 +294,7 @@ function renderDialog(wine) {
   els.dialogContent.innerHTML = `
     <div class="dialog-heading">
       <h2 class="dialog-title">${escapeHtml(wine.name)}</h2>
-      ${glass ? `<span class="glass-badge">POR COPA</span>` : ""}
+      ${badge ? `<span class="glass-badge">${escapeHtml(badge)}</span>` : ""}
     </div>
     <dl class="detail-grid">
       ${rows.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value)}</dd>`).join("")}
@@ -291,7 +306,7 @@ function renderDialog(wine) {
             <strong>${escapeHtml(item.outlet)}</strong>
             <strong class="location-price">${escapeHtml(item.price || "")}</strong>
           </div>
-          ${glass ? `<strong class="location-glass">POR COPA</strong>` : ""}
+          ${badge ? `<strong class="location-glass">${escapeHtml(badge)}</strong>` : ""}
           <span class="location-place">${escapeHtml(item.location || "Sin ubicación")}</span>
         </div>
       `).join("")}
@@ -420,6 +435,58 @@ async function patchUser(row, extra = {}) {
   renderUsers(result.users || []);
 }
 
+function setImportProgress(percent, text) {
+  const safePercent = Math.max(0, Math.min(100, Math.round(percent)));
+  els.importStatus.hidden = false;
+  els.importProgress.value = safePercent;
+  els.importPercent.textContent = `${safePercent}%`;
+  els.importStatusText.textContent = text;
+}
+
+function hideImportProgress() {
+  window.setTimeout(() => {
+    els.importStatus.hidden = true;
+    els.importProgress.value = 0;
+    els.importPercent.textContent = "0%";
+  }, 900);
+}
+
+function uploadExcel(file, outlet) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", `/api/import?outlet=${encodeURIComponent(outlet)}`);
+    request.setRequestHeader("X-Filename", file.name);
+    request.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) {
+        setImportProgress(20, "Subiendo Excel...");
+        return;
+      }
+      setImportProgress((event.loaded / event.total) * 90, "Subiendo Excel...");
+    });
+    request.addEventListener("load", () => {
+      let result = {};
+      try {
+        result = request.responseText ? JSON.parse(request.responseText) : {};
+      } catch (error) {
+        result = { error: request.responseText || "Respuesta inválida del servidor" };
+      }
+      if (request.status === 401) {
+        location.href = "/login";
+        return;
+      }
+      if (request.status < 200 || request.status >= 300) {
+        reject(new Error(result.error || "No se pudo importar el Excel"));
+        return;
+      }
+      resolve(result);
+    });
+    request.addEventListener("error", () => reject(new Error("No se pudo conectar con el servidor de importación.")));
+    setImportProgress(1, "Preparando Excel...");
+    request.send(file);
+    setImportProgress(5, "Subiendo Excel...");
+  });
+}
+
 async function readResponse(response) {
   const text = await response.text();
   if (!text) return {};
@@ -521,28 +588,15 @@ els.fileInput.addEventListener("change", async (event) => {
   if (!file) return;
   const outlet = state.outlet === "TODOS" ? "SHIMA" : state.outlet;
   try {
-    const response = await fetch(`/api/import?outlet=${encodeURIComponent(outlet)}`, {
-      method: "POST",
-      body: await file.arrayBuffer(),
-      cache: "no-store",
-      headers: {
-        "X-Filename": file.name,
-      },
-    });
-    if (response.status === 401) {
-      location.href = "/login";
-      return;
-    }
-    const result = await readResponse(response);
-    if (!response.ok) {
-      alert(result.error || "No se pudo importar el Excel");
-      return;
-    }
+    const result = await uploadExcel(file, outlet);
+    setImportProgress(95, "Actualizando listado...");
     await loadData();
+    setImportProgress(100, "Importación completada");
     alert(`${result.imported} vinos importados en ${result.outlet}. Activos: ${result.summary?.active_locations ?? "?"}`);
   } catch (error) {
-    alert("No se pudo conectar con el servidor de importación.");
+    alert(error.message || "No se pudo conectar con el servidor de importación.");
   } finally {
+    hideImportProgress();
     event.target.value = "";
   }
 });
