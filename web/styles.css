@@ -171,6 +171,12 @@ select:focus {
   font-weight: 650;
 }
 
+.category-chips {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 12px;
+}
+
 .chip.active {
   background: var(--dark);
   color: white;
