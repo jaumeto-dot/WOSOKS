@@ -55,6 +55,14 @@
         <select id="vintageFilter" aria-label="Añada"><option value="">Añada</option></select>
       </section>
 
+      <section class="import-status" id="importStatus" hidden>
+        <div>
+          <strong id="importStatusText">Subiendo Excel...</strong>
+          <span id="importPercent">0%</span>
+        </div>
+        <progress id="importProgress" max="100" value="0"></progress>
+      </section>
+
       <section class="users-panel" id="usersPanel" hidden>
         <div class="panel-head">
           <div>
@@ -86,6 +94,6 @@
       <div id="dialogContent"></div>
     </dialog>
 
-    <script src="./app.js?v=11"></script>
+    <script src="./app.js?v=12"></script>
   </body>
 </html>
